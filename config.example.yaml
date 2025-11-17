@@ -1,0 +1,34 @@
+# NetMapper Configuration Example
+# Copy this file to config.yaml and update with your settings
+
+# Starting device for network discovery
+start_device:
+  hostname: "core-switch-01"
+  ip: "192.168.1.1"
+  username: "admin"
+  password: "cisco123"
+  enable_password: "enable123"  # Optional, defaults to password
+  protocol: "ssh"  # ssh or telnet
+  port: 22
+  os: "ios"  # ios, iosxe, nxos, iosxr, etc.
+
+# Neo4j database configuration
+neo4j:
+  uri: "bolt://localhost:7687"
+  username: "neo4j"
+  password: "your-neo4j-password"
+
+# Discovery options
+discovery:
+  # Maximum discovery depth (optional, null means no limit)
+  max_depth: null
+
+  # Enable/disable specific discovery methods
+  discover_cdp: true
+  discover_lldp: true
+  discover_stp: true
+  discover_vlans: true
+
+  # Timeouts in seconds
+  connection_timeout: 30
+  command_timeout: 30
