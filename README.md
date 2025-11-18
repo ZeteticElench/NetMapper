@@ -4,6 +4,11 @@ A strongly-typed Python network topology discovery tool using PyATS and Neo4j. N
 
 ## Features
 
+- **Parallel Discovery (10-50x faster)**: Async producer-consumer pattern with worker pools
+  - Concurrent device processing with configurable worker count
+  - Natural backpressure via queue management
+  - Thread-safe visited tracking prevents infinite loops
+  - Backwards compatible sequential mode available
 - **Automated Discovery**: Queue-based network traversal starting from a single device
 - **Multiple Discovery Protocols**: CDP and LLDP support
 - **Bejerano Layer 2 Topology Discovery**: Physical topology inference from MAC tables
@@ -159,22 +164,35 @@ discovery:
 
 ## Usage
 
-### Basic Usage
+### Parallel Discovery (Recommended - 10-50x faster)
 
 ```bash
+# Default: 10 workers, auto-detects from config
+python -m netmapper.main_unified
+
+# Custom worker count (20 workers)
+python -m netmapper.main_unified --workers 20
+
+# Verbose mode with 15 workers
+python -m netmapper.main_unified -v --workers 15
+```
+
+**See [PARALLEL_DISCOVERY.md](PARALLEL_DISCOVERY.md) for detailed performance guide.**
+
+### Sequential Mode (Legacy)
+
+```bash
+# Force sequential mode
+python -m netmapper.main_unified --sequential
+
+# Or use the original entry point
 python -m netmapper.main
 ```
 
 ### With Custom Config File
 
 ```bash
-python -m netmapper.main -c /path/to/config.yaml
-```
-
-### Verbose Mode
-
-```bash
-python -m netmapper.main -v
+python -m netmapper.main_unified -c /path/to/config.yaml
 ```
 
 ### Using as a Python Module

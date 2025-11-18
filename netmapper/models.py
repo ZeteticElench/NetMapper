@@ -135,6 +135,10 @@ class DiscoveryConfig(BaseModel):
     discover_vlans: bool = True
     connection_timeout: int = 30
     command_timeout: int = 30
+    # Parallel discovery settings
+    parallel_discovery: bool = True
+    max_workers: int = 10
+    queue_max_size: int = 100
     # Bejerano Layer 2 topology discovery
     enable_bejerano: bool = True
     snmp_community: str = "public"

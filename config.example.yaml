@@ -33,6 +33,18 @@ discovery:
   connection_timeout: 30
   command_timeout: 30
 
+# Parallel discovery options (10-50x faster than sequential)
+parallel:
+  # Enable parallel discovery with worker pool
+  enable: true
+
+  # Number of concurrent workers (devices processed simultaneously)
+  # Recommended: 10-20 for most networks, 50+ for large networks
+  max_workers: 10
+
+  # Maximum work queue size (backpressure control)
+  queue_max_size: 100
+
 # Bejerano Layer 2 topology discovery options
 bejerano:
   # Enable Bejerano algorithm for physical topology discovery
