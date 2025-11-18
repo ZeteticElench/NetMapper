@@ -32,3 +32,16 @@ discovery:
   # Timeouts in seconds
   connection_timeout: 30
   command_timeout: 30
+
+# Bejerano Layer 2 topology discovery options
+bejerano:
+  # Enable Bejerano algorithm for physical topology discovery
+  enable: true
+
+  # SNMP community string (if using SNMP collection method)
+  snmp_community: "public"
+
+  # MAC address table collection method
+  # "snmp" - Use SNMP Bridge MIB (RFC 1493) - faster, requires SNMP access
+  # "pyats" - Use PyATS CLI parsing - works without SNMP, uses SSH
+  mac_collection_method: "snmp"

@@ -1,17 +1,22 @@
 # NetMapper
 
-A strongly-typed Python network topology discovery tool using PyATS and Neo4j. NetMapper automatically discovers network devices using CDP/LLDP, collects interface, VLAN, and STP data, and builds a comprehensive topology map in Neo4j.
+A strongly-typed Python network topology discovery tool using PyATS and Neo4j. NetMapper automatically discovers network devices using CDP/LLDP, collects interface, VLAN, and STP data, and builds a comprehensive topology map in Neo4j. Additionally implements the **Bejerano et al. 2003 algorithm** for Layer 2 physical topology discovery using MAC address forwarding tables.
 
 ## Features
 
 - **Automated Discovery**: Queue-based network traversal starting from a single device
 - **Multiple Discovery Protocols**: CDP and LLDP support
+- **Bejerano Layer 2 Topology Discovery**: Physical topology inference from MAC tables
+  - Discovers switch-to-switch connections via SNMP or PyATS
+  - Detects uncooperative elements (hubs, unmanaged switches)
+  - Independent verification of CDP/LLDP topology
 - **Comprehensive Data Collection**:
   - Device information (hostname, platform, version, etc.)
   - Physical ports (status, speed, duplex)
   - Logical interfaces (IP addresses, VLANs)
   - VLAN configuration
   - STP topology per VLAN
+  - MAC address forwarding tables
 - **Smart Cable Tracking**: Automatic generation of unique 4-character alphanumeric cable IDs
 - **Loop Prevention**: Tracks visited devices to prevent infinite discovery loops
 - **Strongly Typed**: Full type hints for better IDE support and code quality
@@ -199,6 +204,21 @@ try:
 finally:
     discovery.close()
 ```
+
+### Hybrid Discovery (PyATS + Bejerano)
+
+For complete topology discovery including Layer 2 physical topology:
+
+```bash
+# Run hybrid discovery with SNMP-based MAC collection
+python -m netmapper.main_hybrid
+
+# Run with PyATS-based MAC collection (no SNMP required)
+# Edit config.yaml: mac_collection_method: "pyats"
+python -m netmapper.main_hybrid
+```
+
+**See [BEJERANO_ALGORITHM.md](BEJERANO_ALGORITHM.md) for detailed documentation.**
 
 ## How It Works
 

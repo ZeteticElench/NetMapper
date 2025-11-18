@@ -135,6 +135,10 @@ class DiscoveryConfig(BaseModel):
     discover_vlans: bool = True
     connection_timeout: int = 30
     command_timeout: int = 30
+    # Bejerano Layer 2 topology discovery
+    enable_bejerano: bool = True
+    snmp_community: str = "public"
+    mac_collection_method: str = "snmp"  # "snmp" or "pyats"
 
 
 class DiscoveryResult(BaseModel):
