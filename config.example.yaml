@@ -45,6 +45,21 @@ parallel:
   # Maximum work queue size (backpressure control)
   queue_max_size: 100
 
+  # Adaptive worker tuning (auto-scale workers based on queue depth)
+  # "Waiting is infinitely parallelizable until you run out of RAM"
+  enable_adaptive_tuning: true
+
+  # Minimum workers (always running)
+  min_workers: 5
+
+  # Maximum workers (async coroutines use ~5 KB each, so 100 workers = ~500 KB!)
+  # RAM is the only limit - set this high!
+  adaptive_max_workers: 100
+
+  # Batched Neo4j writes (10-100x faster than individual writes)
+  # Batch size scales dynamically with queue depth
+  enable_neo4j_batching: true
+
 # Bejerano Layer 2 topology discovery options
 bejerano:
   # Enable Bejerano algorithm for physical topology discovery

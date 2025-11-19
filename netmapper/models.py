@@ -139,6 +139,12 @@ class DiscoveryConfig(BaseModel):
     parallel_discovery: bool = True
     max_workers: int = 10
     queue_max_size: int = 100
+    # Adaptive worker tuning
+    enable_adaptive_tuning: bool = True
+    min_workers: int = 5
+    adaptive_max_workers: int = 100
+    # Batched Neo4j writes
+    enable_neo4j_batching: bool = True
     # Bejerano Layer 2 topology discovery
     enable_bejerano: bool = True
     snmp_community: str = "public"

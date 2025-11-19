@@ -84,6 +84,10 @@ def load_config(config_file: Path) -> DiscoveryConfig:
         parallel_discovery=parallel_opts.get('enable', True),
         max_workers=parallel_opts.get('max_workers', 10),
         queue_max_size=parallel_opts.get('queue_max_size', 100),
+        enable_adaptive_tuning=parallel_opts.get('enable_adaptive_tuning', True),
+        min_workers=parallel_opts.get('min_workers', 5),
+        adaptive_max_workers=parallel_opts.get('adaptive_max_workers', 100),
+        enable_neo4j_batching=parallel_opts.get('enable_neo4j_batching', True),
         enable_bejerano=bejerano_opts.get('enable', True),
         snmp_community=bejerano_opts.get('snmp_community', 'public'),
         mac_collection_method=bejerano_opts.get('mac_collection_method', 'snmp'),
@@ -92,12 +96,42 @@ def load_config(config_file: Path) -> DiscoveryConfig:
     return config
 
 
+async def run_adaptive_mode(config: DiscoveryConfig, logger: logging.Logger) -> int:
+    """Run in adaptive async mode with self-tuning workers and batched writes."""
+    from .adaptive_async_discovery import run_adaptive_discovery
+
+    logger.info("=" * 60)
+    logger.info("ADAPTIVE DISCOVERY MODE")
+    logger.info("=" * 60)
+    logger.info(f"Worker range: {config.min_workers}-{config.adaptive_max_workers}")
+    logger.info(f"Adaptive tuning: {config.enable_adaptive_tuning}")
+    logger.info(f"Neo4j batching: {config.enable_neo4j_batching}")
+    logger.info(f"Queue size: {config.queue_max_size}")
+    logger.info(f"Bejerano: {config.enable_bejerano}")
+    logger.info("=" * 60)
+    logger.info("Waiting is infinitely parallelizable - only RAM is the limit!")
+    logger.info("=" * 60)
+
+    try:
+        await run_adaptive_discovery(
+            config=config,
+            min_workers=config.min_workers,
+            max_workers=config.adaptive_max_workers,
+            enable_adaptive_tuning=config.enable_adaptive_tuning,
+        )
+        logger.info("Adaptive discovery completed successfully")
+        return 0
+    except Exception as e:
+        logger.error(f"Adaptive discovery failed: {e}", exc_info=True)
+        return 1
+
+
 async def run_async_mode(config: DiscoveryConfig, logger: logging.Logger) -> int:
-    """Run in async parallel mode."""
+    """Run in async parallel mode (fixed workers)."""
     from .async_hybrid_discovery import run_async_hybrid_discovery
 
     logger.info("=" * 60)
-    logger.info("PARALLEL DISCOVERY MODE")
+    logger.info("PARALLEL DISCOVERY MODE (Fixed Workers)")
     logger.info("=" * 60)
     logger.info(f"Workers: {config.max_workers}")
     logger.info(f"Queue size: {config.queue_max_size}")
@@ -215,8 +249,13 @@ def main() -> int:
 
         # Run discovery in appropriate mode
         if config.parallel_discovery:
-            # Async parallel mode
-            return asyncio.run(run_async_mode(config, logger))
+            # Check if adaptive mode is enabled
+            if config.enable_adaptive_tuning:
+                # Adaptive mode with self-tuning workers
+                return asyncio.run(run_adaptive_mode(config, logger))
+            else:
+                # Fixed async parallel mode
+                return asyncio.run(run_async_mode(config, logger))
         else:
             # Sequential mode
             return run_sequential_mode(config, logger)
