@@ -27,6 +27,11 @@ A strongly-typed Python network topology discovery tool using PyATS and Neo4j. N
 - **Loop Prevention**: Tracks visited devices to prevent infinite discovery loops
 - **Strongly Typed**: Full type hints for better IDE support and code quality
 - **Neo4j Graph Database**: Rich graph-based topology representation
+- **🎨 Visualization Dashboard**: React-based web interface (see `frontend/` directory)
+  - **D3.js Hierarchy View**: Zoomable circle packing visualization
+  - **Cytoscape.js Topology View**: Interactive network graph with compound nodes
+  - Real-time status monitoring and device details
+  - Context menus, SSH/trace actions, and more
 
 ## Architecture
 
@@ -316,6 +321,63 @@ MATCH (d:NetworkDevice)-[:HAS_STP]->(s:STPInstance {vlan_id: 1})-[r:STP_INTERFAC
 RETURN d.hostname, i.name, r.role, r.state, r.cost
 ORDER BY d.hostname, i.name
 ```
+
+## Visualization Dashboard
+
+NetMapper includes a powerful React-based web interface for visualizing network topology. See `frontend/` directory for full documentation.
+
+### Quick Start
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
+
+### Features
+
+#### 📊 Hierarchy View (D3.js Circle Packing)
+- Zoomable circle packing visualization
+- Color-coded by status (green=up, yellow=warning, red=down)
+- Click to zoom in/out through Data Center → Rack → Device → Interface
+- Click leaf nodes to view detailed information
+
+#### 🌐 Topology View (Cytoscape.js)
+- Interactive network graph with compound nodes
+- Nested boxes for Data Centers, Racks, and Devices
+- Interface nodes with connection lines
+- Right-click context menu (Config, Trace, SSH)
+- fcose layout algorithm for optimal spacing
+
+#### 💡 Interactive Features
+- View toggle between Hierarchy and Topology
+- Real-time statistics dashboard
+- Status modal with device details and configuration
+- SSH and trace route actions
+- Connection highlighting
+- Zoom/pan controls
+
+### Integration
+
+The frontend can consume data from NetMapper's Neo4j database via a REST API. Example integration:
+
+```python
+# Add to netmapper/api.py
+from flask import Flask, jsonify
+from .neo4j_manager import Neo4jManager
+
+@app.route('/api/network-topology')
+def get_topology():
+    neo4j = Neo4jManager(...)
+    return jsonify({
+        'hierarchy': neo4j.get_hierarchy_data(),
+        'topology': neo4j.get_topology_data()
+    })
+```
+
+For complete setup instructions, see [frontend/QUICKSTART.md](frontend/QUICKSTART.md)
 
 ## Supported Platforms
 
