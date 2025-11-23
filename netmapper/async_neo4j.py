@@ -11,7 +11,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession
 
-from .models import DiscoveryResult
+from .models import (
+    DiscoveryResult,
+    CIMNestingRelationship,
+    CIMRelationshipType,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -452,3 +456,110 @@ class AsyncNeo4jManager:
             )
             records = await result.values()
             return {record[0] for record in records}
+
+    async def create_cim_nesting_relationship(
+        self, relationship: CIMNestingRelationship
+    ) -> None:
+        """
+        Create a CIM-based nesting relationship between nodes (async).
+
+        Args:
+            relationship: CIM nesting relationship to create.
+
+        Example:
+            >>> rel = CIMNestingRelationship(
+            ...     parent_id="chassis-01",
+            ...     child_id="linecard-01",
+            ...     relationship_type=CIMRelationshipType.COMPONENT,
+            ...     location_within_container="Slot 1",
+            ...     is_weak=True
+            ... )
+            >>> await manager.create_cim_nesting_relationship(rel)
+        """
+        # Build relationship properties
+        rel_props = {
+            "relationship_type": relationship.relationship_type.value,
+            "is_weak": relationship.is_weak,
+        }
+
+        if relationship.location_within_container:
+            rel_props["location_within_container"] = relationship.location_within_container
+
+        if relationship.removal_conditions:
+            rel_props["removal_conditions"] = relationship.removal_conditions.value
+
+        rel_props.update(relationship.properties)
+
+        # Build property string for Cypher
+        prop_strings = [f"{k}: ${k}" for k in rel_props.keys()]
+        props_cypher = "{" + ", ".join(prop_strings) + "}"
+
+        query = f"""
+        MERGE (parent {{id: $parent_id}})
+        MERGE (child {{id: $child_id}})
+        MERGE (parent)-[r:{relationship.relationship_type.value}]->(child)
+        SET r = {props_cypher}
+        RETURN r
+        """
+
+        if self.enable_batching:
+            # Enqueue for batched write
+            await self.batch_writer.enqueue_write(
+                query,
+                {
+                    "parent_id": relationship.parent_id,
+                    "child_id": relationship.child_id,
+                    **rel_props,
+                },
+                "cim_relationship",
+            )
+        else:
+            # Execute immediately
+            async with self.driver.session() as session:
+                await session.run(
+                    query,
+                    parent_id=relationship.parent_id,
+                    child_id=relationship.child_id,
+                    **rel_props,
+                )
+
+    async def get_cim_children(
+        self,
+        parent_id: str,
+        relationship_type: Optional[CIMRelationshipType] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all child nodes of a parent via CIM relationships (async).
+
+        Args:
+            parent_id: Parent node identifier.
+            relationship_type: Optional filter by CIM relationship type.
+
+        Returns:
+            List of child nodes with relationship properties.
+        """
+        query = """
+        MATCH (parent {id: $parent_id})-[r]->(child)
+        WHERE r.relationship_type IS NOT NULL
+        """
+
+        params = {"parent_id": parent_id}
+
+        if relationship_type:
+            query += " AND r.relationship_type = $rel_type"
+            params["rel_type"] = relationship_type.value
+
+        query += """
+        RETURN child, r, labels(child) as labels
+        """
+
+        driver = self.batch_writer.driver if self.enable_batching else self.driver
+        async with driver.session() as session:
+            result = await session.run(query, **params)
+            children = []
+            async for record in result:
+                child_data = dict(record["child"])
+                child_data["labels"] = record["labels"]
+                child_data["relationship"] = dict(record["r"])
+                children.append(child_data)
+            return children

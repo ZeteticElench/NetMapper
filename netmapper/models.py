@@ -20,6 +20,33 @@ class CableType(str, Enum):
     UNKNOWN = "unknown"
 
 
+class CIMRelationshipType(str, Enum):
+    """
+    DMTF CIM relationship types for nesting hierarchies.
+
+    Based on CIM Schema v2.55.0:
+    - CONTAINER: Physical containment (CIM_Container, CIM_PackagedComponent)
+    - COMPONENT: Composition relationship (CIM_ConcreteComponent with Composition)
+    - MEMBER_OF_COLLECTION: Logical hierarchy (CIM_MemberOfCollection)
+    """
+    CONTAINER = "CIM_CONTAINER"
+    COMPONENT = "CIM_COMPONENT"
+    MEMBER_OF_COLLECTION = "CIM_MEMBER_OF_COLLECTION"
+
+
+class RemovalConditions(str, Enum):
+    """
+    CIM RemovalConditions for physical components.
+
+    Indicates whether a component can be removed and under what conditions.
+    Maps to CIM_PhysicalComponent.RemovalConditions.
+    """
+    UNKNOWN = "Unknown"
+    NOT_APPLICABLE = "Not Applicable"
+    REMOVABLE_WHEN_OFF = "Removable when off"
+    REMOVABLE_WHEN_ON_OR_OFF = "Removable when on or off"
+
+
 class Port(BaseModel):
     """Physical port model."""
     name: str
@@ -158,3 +185,48 @@ class DiscoveryResult(BaseModel):
     lldp_neighbors: List[LLDPNeighbor] = Field(default_factory=list)
     vlans: List[VLANInfo] = Field(default_factory=list)
     stp_instances: List[STPInstance] = Field(default_factory=list)
+
+
+class CIMNestingRelationship(BaseModel):
+    """
+    CIM-based nesting relationship between nodes.
+
+    Implements DMTF CIM containment, composition, and membership relationships
+    to model hierarchical structures in network infrastructure.
+
+    Examples:
+    - Rack CONTAINS Server (movable, removal_conditions=REMOVABLE_WHEN_OFF)
+    - Server COMPONENT PowerSupply (integral part, is_weak=True)
+    - DeviceGroup MEMBER_OF_COLLECTION Switch1 (logical grouping)
+    """
+    parent_id: str = Field(..., description="Parent node identifier (hostname, ID, etc.)")
+    child_id: str = Field(..., description="Child node identifier")
+    relationship_type: CIMRelationshipType = Field(
+        ...,
+        description="Type of CIM relationship"
+    )
+
+    # CIM_Container properties
+    location_within_container: Optional[str] = Field(
+        None,
+        description="Position of child within parent (e.g., 'Slot 2', 'Bay 3')"
+    )
+
+    # CIM_PhysicalComponent properties
+    removal_conditions: Optional[RemovalConditions] = Field(
+        None,
+        description="Conditions under which child can be removed from parent"
+    )
+
+    # Composition semantics
+    is_weak: bool = Field(
+        False,
+        description="If True, child cannot exist without parent (Composition). "
+                   "If False, child can exist independently (Aggregation)."
+    )
+
+    # Additional metadata
+    properties: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional CIM properties or custom metadata"
+    )

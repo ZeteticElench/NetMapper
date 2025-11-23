@@ -15,6 +15,9 @@ from .models import (
     STPInstance,
     STPInterface,
     DiscoveryResult,
+    CIMNestingRelationship,
+    CIMRelationshipType,
+    RemovalConditions,
 )
 from .utils import CableIDGenerator
 
@@ -429,3 +432,177 @@ class Neo4jManager:
         with self.driver.session() as session:
             result = session.run(query, hostname=hostname)
             return result.single() is not None
+
+    def create_cim_nesting_relationship(
+        self, relationship: CIMNestingRelationship
+    ) -> None:
+        """
+        Create a CIM-based nesting relationship between nodes.
+
+        Supports DMTF CIM relationship types:
+        - CIM_CONTAINER: Physical containment (movable items)
+        - CIM_COMPONENT: Composition (integral subcomponents)
+        - CIM_MEMBER_OF_COLLECTION: Logical hierarchy
+
+        Args:
+            relationship: CIM nesting relationship to create.
+
+        Example:
+            >>> # Rack contains server
+            >>> rel = CIMNestingRelationship(
+            ...     parent_id="rack-01",
+            ...     child_id="server-01",
+            ...     relationship_type=CIMRelationshipType.CONTAINER,
+            ...     location_within_container="U42",
+            ...     removal_conditions=RemovalConditions.REMOVABLE_WHEN_OFF
+            ... )
+            >>> manager.create_cim_nesting_relationship(rel)
+        """
+        logger.info(
+            f"Creating {relationship.relationship_type.value} relationship: "
+            f"{relationship.parent_id} -> {relationship.child_id}"
+        )
+
+        with self.driver.session() as session:
+            session.execute_write(
+                self._create_cim_relationship_tx, relationship
+            )
+
+    @staticmethod
+    def _create_cim_relationship_tx(
+        tx: ManagedTransaction, rel: CIMNestingRelationship
+    ) -> None:
+        """Create CIM relationship in a transaction."""
+        # Build relationship properties
+        rel_props = {
+            "relationship_type": rel.relationship_type.value,
+            "is_weak": rel.is_weak,
+        }
+
+        if rel.location_within_container:
+            rel_props["location_within_container"] = rel.location_within_container
+
+        if rel.removal_conditions:
+            rel_props["removal_conditions"] = rel.removal_conditions.value
+
+        # Add custom properties
+        rel_props.update(rel.properties)
+
+        # Build property string for Cypher
+        prop_strings = [f"{k}: ${k}" for k in rel_props.keys()]
+        props_cypher = "{" + ", ".join(prop_strings) + "}"
+
+        # Create relationship (using relationship type as Neo4j relationship type)
+        query = f"""
+        MERGE (parent {{id: $parent_id}})
+        MERGE (child {{id: $child_id}})
+        MERGE (parent)-[r:{rel.relationship_type.value}]->(child)
+        SET r = {props_cypher}
+        RETURN r
+        """
+
+        tx.run(
+            query,
+            parent_id=rel.parent_id,
+            child_id=rel.child_id,
+            **rel_props,
+        )
+
+    def get_cim_children(
+        self,
+        parent_id: str,
+        relationship_type: Optional[CIMRelationshipType] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all child nodes of a parent via CIM relationships.
+
+        Args:
+            parent_id: Parent node identifier.
+            relationship_type: Optional filter by CIM relationship type.
+
+        Returns:
+            List of child nodes with relationship properties.
+
+        Example:
+            >>> # Get all children of a rack
+            >>> children = manager.get_cim_children("rack-01")
+            >>>
+            >>> # Get only contained items (not components)
+            >>> contained = manager.get_cim_children(
+            ...     "rack-01",
+            ...     CIMRelationshipType.CONTAINER
+            ... )
+        """
+        query = """
+        MATCH (parent {id: $parent_id})-[r]->(child)
+        WHERE r.relationship_type IS NOT NULL
+        """
+
+        params = {"parent_id": parent_id}
+
+        if relationship_type:
+            query += " AND r.relationship_type = $rel_type"
+            params["rel_type"] = relationship_type.value
+
+        query += """
+        RETURN child, r, labels(child) as labels
+        """
+
+        with self.driver.session() as session:
+            result = session.run(query, **params)
+            children = []
+            for record in result:
+                child_data = dict(record["child"])
+                child_data["labels"] = record["labels"]
+                child_data["relationship"] = dict(record["r"])
+                children.append(child_data)
+            return children
+
+    def get_cim_hierarchy(
+        self, root_id: str, max_depth: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get complete CIM nesting hierarchy starting from a root node.
+
+        Args:
+            root_id: Root node identifier.
+            max_depth: Maximum traversal depth.
+
+        Returns:
+            Nested dictionary representing the hierarchy.
+
+        Example:
+            >>> hierarchy = manager.get_cim_hierarchy("datacenter-01")
+            >>> # Returns tree structure with all nested components
+        """
+        query = """
+        MATCH path = (root {id: $root_id})-[r*0..%d]->(descendant)
+        WHERE ALL(rel IN relationships(path) WHERE rel.relationship_type IS NOT NULL)
+        RETURN path
+        """ % max_depth
+
+        with self.driver.session() as session:
+            result = session.run(query, root_id=root_id)
+
+            # Build hierarchy tree
+            hierarchy = {"id": root_id, "children": {}}
+
+            for record in result:
+                path = record["path"]
+                nodes = path.nodes
+                relationships = path.relationships
+
+                current = hierarchy
+                for i, node in enumerate(nodes[1:], 1):
+                    node_id = node.get("id") or node.get("hostname")
+                    if node_id not in current["children"]:
+                        current["children"][node_id] = {
+                            "id": node_id,
+                            "labels": list(node.labels),
+                            "properties": dict(node),
+                            "relationship": dict(relationships[i - 1]) if i <= len(relationships) else None,
+                            "children": {},
+                        }
+                    current = current["children"][node_id]
+
+            return hierarchy
