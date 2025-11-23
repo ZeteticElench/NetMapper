@@ -51,6 +51,13 @@ A strongly-typed Python network topology discovery tool using PyATS and Neo4j. N
   - CIM_MEMBER_OF_COLLECTION: Logical groupings (device collections, clusters)
   - Based on DMTF CIM Schema v2.55.0
   - See [CIM_NESTING_RELATIONSHIPS.md](docs/CIM_NESTING_RELATIONSHIPS.md) for details
+- **Infrahub Integration**: Export topology to standardized Infrahub models
+  - Convert NetMapper data to Infrahub-compatible YAML/JSON
+  - Map to Infrahub base models (InfraDevice, InfraInterface, InfraVLAN, IpamIPAddress)
+  - Align Infrahub Component relationships with CIM semantics
+  - CLI tool: `./netmapper-infrahub-export`
+  - Based on [opsmill/infrahub](https://github.com/opsmill/infrahub) models
+  - See [INFRAHUB_INTEGRATION.md](docs/INFRAHUB_INTEGRATION.md) for details
 
 ## Architecture
 

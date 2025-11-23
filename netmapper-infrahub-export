@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""
+NetMapper to Infrahub Export CLI Tool
+
+Export NetMapper discovery data to Infrahub-compatible format.
+
+Usage:
+    ./netmapper-infrahub-export --format yaml --output topology.yml
+    ./netmapper-infrahub-export --format json --output topology.json
+    ./netmapper-infrahub-export --format both --output-dir ./exports/
+"""
+
+import sys
+import os
+import argparse
+import logging
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from netmapper.infrahub_adapter import InfrahubAdapter
+
+logger = logging.getLogger(__name__)
+
+
+def main():
+    """Main CLI entry point."""
+    parser = argparse.ArgumentParser(
+        description="Export NetMapper topology to Infrahub format"
+    )
+
+    parser.add_argument(
+        "--neo4j-uri",
+        default="bolt://localhost:7687",
+        help="Neo4j connection URI (default: bolt://localhost:7687)",
+    )
+    parser.add_argument(
+        "--neo4j-user",
+        default="neo4j",
+        help="Neo4j username (default: neo4j)",
+    )
+    parser.add_argument(
+        "--neo4j-password",
+        default="password",
+        help="Neo4j password (default: password)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["yaml", "json", "both"],
+        default="yaml",
+        help="Export format (default: yaml)",
+    )
+    parser.add_argument(
+        "--output",
+        help="Output file path (required for yaml/json format)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        help="Output directory (for 'both' format)",
+        default=".",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Verbose output",
+    )
+
+    args = parser.parse_args()
+
+    # Configure logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Validate arguments
+    if args.format in ["yaml", "json"] and not args.output:
+        parser.error(f"--output is required for {args.format} format")
+
+    # Create adapter
+    adapter = InfrahubAdapter(
+        args.neo4j_uri,
+        args.neo4j_user,
+        args.neo4j_password,
+    )
+
+    try:
+        # Convert topology
+        print("Converting NetMapper topology to Infrahub models...")
+        topology = adapter.convert_topology()
+
+        # Print summary
+        print(f"\nConverted:")
+        print(f"  - {len(topology.devices)} devices")
+        print(f"  - {len(topology.interfaces)} interfaces")
+        print(f"  - {len(topology.vlans)} VLANs")
+        print(f"  - {len(topology.ip_addresses)} IP addresses")
+        print(f"  - {len(topology.sites)} sites")
+
+        # Export based on format
+        if args.format == "yaml":
+            adapter.export_to_yaml(topology, args.output)
+            print(f"\nExported to: {args.output}")
+
+        elif args.format == "json":
+            adapter.export_to_json(topology, args.output)
+            print(f"\nExported to: {args.output}")
+
+        elif args.format == "both":
+            output_dir = Path(args.output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            yaml_file = output_dir / "netmapper_topology.yml"
+            json_file = output_dir / "netmapper_topology.json"
+
+            adapter.export_to_yaml(topology, str(yaml_file))
+            adapter.export_to_json(topology, str(json_file))
+
+            print(f"\nExported to:")
+            print(f"  - {yaml_file}")
+            print(f"  - {json_file}")
+
+        print("\n✓ Export complete!")
+
+    except Exception as e:
+        logger.error(f"Export failed: {e}", exc_info=True)
+        sys.exit(1)
+
+    finally:
+        adapter.close()
+
+
+if __name__ == "__main__":
+    main()
