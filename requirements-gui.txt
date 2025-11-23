@@ -1,0 +1,13 @@
+# NetMapper GUI Dependencies
+# Install with: pip install -r requirements-gui.txt
+
+# Core GUI framework
+PySide6>=6.5.0
+
+# Already required by NetMapper (included for reference)
+# neo4j>=5.0.0
+# pydantic>=2.0.0
+# pyats>=23.0
+# genie>=23.0
+# netaddr>=0.8.0
+# pysnmp>=4.4.12

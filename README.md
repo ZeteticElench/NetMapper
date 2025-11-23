@@ -27,17 +27,30 @@ A strongly-typed Python network topology discovery tool using PyATS and Neo4j. N
 - **Loop Prevention**: Tracks visited devices to prevent infinite discovery loops
 - **Strongly Typed**: Full type hints for better IDE support and code quality
 - **Neo4j Graph Database**: Rich graph-based topology representation
-- **🎨 Two Powerful Visualization Frontends**:
-  - **Option 1: React Dashboard** (`frontend/`) - Recommended for most users
+- **🎨 Three Powerful Visualization Options**:
+  - **Option 1: PySide6 GUI** (`gui/`) - **NEW!** Native desktop application
+    - Network discovery configuration and execution
+    - Interactive topology visualization with drag-and-drop
+    - DMTF CIM relationship management (create/view hierarchies)
+    - Cypher query interface with templates
+    - No web server required - runs locally
+    - See [GUI_GUIDE.md](docs/GUI_GUIDE.md) for details
+  - **Option 2: React Dashboard** (`frontend/`) - Recommended for web-based workflows
     - D3.js Hierarchy View: Zoomable circle packing
     - Cytoscape.js Topology View: Interactive network graph with compound nodes
     - Real-time status monitoring, SSH/trace actions, device details modal
-  - **Option 2: GraphUI** (`frontend-graphui/`) - Advanced dense visualization
+  - **Option 3: GraphUI** (`frontend-graphui/`) - Advanced dense visualization
     - Canvas-based ultra-dense rendering (1000s of nodes)
     - "Google Earth for Data Centers" hierarchical drill-down
     - Direct Neo4j bolt connection with Cypher queries
     - Multiple layout algorithms and spatial troubleshooting
   - **See [VISUALIZATION_OPTIONS.md](VISUALIZATION_OPTIONS.md) for comparison and setup**
+- **DMTF CIM-Based Nesting Relationships**: Model physical containment, composition, and logical hierarchies
+  - CIM_CONTAINER: Physical containment (racks, servers)
+  - CIM_COMPONENT: Integral subcomponents (PSUs, line cards)
+  - CIM_MEMBER_OF_COLLECTION: Logical groupings (device collections, clusters)
+  - Based on DMTF CIM Schema v2.55.0
+  - See [CIM_NESTING_RELATIONSHIPS.md](docs/CIM_NESTING_RELATIONSHIPS.md) for details
 
 ## Architecture
 
