@@ -27,11 +27,17 @@ A strongly-typed Python network topology discovery tool using PyATS and Neo4j. N
 - **Loop Prevention**: Tracks visited devices to prevent infinite discovery loops
 - **Strongly Typed**: Full type hints for better IDE support and code quality
 - **Neo4j Graph Database**: Rich graph-based topology representation
-- **🎨 Visualization Dashboard**: React-based web interface (see `frontend/` directory)
-  - **D3.js Hierarchy View**: Zoomable circle packing visualization
-  - **Cytoscape.js Topology View**: Interactive network graph with compound nodes
-  - Real-time status monitoring and device details
-  - Context menus, SSH/trace actions, and more
+- **🎨 Two Powerful Visualization Frontends**:
+  - **Option 1: React Dashboard** (`frontend/`) - Recommended for most users
+    - D3.js Hierarchy View: Zoomable circle packing
+    - Cytoscape.js Topology View: Interactive network graph with compound nodes
+    - Real-time status monitoring, SSH/trace actions, device details modal
+  - **Option 2: GraphUI** (`frontend-graphui/`) - Advanced dense visualization
+    - Canvas-based ultra-dense rendering (1000s of nodes)
+    - "Google Earth for Data Centers" hierarchical drill-down
+    - Direct Neo4j bolt connection with Cypher queries
+    - Multiple layout algorithms and spatial troubleshooting
+  - **See [VISUALIZATION_OPTIONS.md](VISUALIZATION_OPTIONS.md) for comparison and setup**
 
 ## Architecture
 
@@ -322,62 +328,66 @@ RETURN d.hostname, i.name, r.role, r.state, r.cost
 ORDER BY d.hostname, i.name
 ```
 
-## Visualization Dashboard
+## Visualization Options
 
-NetMapper includes a powerful React-based web interface for visualizing network topology. See `frontend/` directory for full documentation.
+NetMapper provides **two powerful visualization frontends** to explore your network topology.
 
-### Quick Start
+**📖 For detailed comparison and setup guide, see [VISUALIZATION_OPTIONS.md](VISUALIZATION_OPTIONS.md)**
+
+### Option 1: React Dashboard (Recommended)
+
+**Location**: `frontend/` | **Best for**: Most users, network operations
 
 ```bash
 cd frontend
 npm install
 npm start
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
+**Features**:
+- 📊 **Hierarchy View**: D3.js zoomable circle packing
+- 🌐 **Topology View**: Cytoscape.js network graph with compound nodes
+- 💡 **Interactive**: View toggle, status modal, SSH/trace actions
+- 📈 **Dashboard**: Real-time statistics and device details
+- 🎯 **Easy Integration**: REST API for Neo4j data
 
-### Features
+See [frontend/README.md](frontend/README.md) and [frontend/QUICKSTART.md](frontend/QUICKSTART.md) for details.
 
-#### 📊 Hierarchy View (D3.js Circle Packing)
-- Zoomable circle packing visualization
-- Color-coded by status (green=up, yellow=warning, red=down)
-- Click to zoom in/out through Data Center → Rack → Device → Interface
-- Click leaf nodes to view detailed information
+### Option 2: GraphUI (Advanced)
 
-#### 🌐 Topology View (Cytoscape.js)
-- Interactive network graph with compound nodes
-- Nested boxes for Data Centers, Racks, and Devices
-- Interface nodes with connection lines
-- Right-click context menu (Config, Trace, SSH)
-- fcose layout algorithm for optimal spacing
+**Location**: `frontend-graphui/` | **Best for**: Dense visualization, data center ops
 
-#### 💡 Interactive Features
-- View toggle between Hierarchy and Topology
-- Real-time statistics dashboard
-- Status modal with device details and configuration
-- SSH and trace route actions
-- Connection highlighting
-- Zoom/pan controls
-
-### Integration
-
-The frontend can consume data from NetMapper's Neo4j database via a REST API. Example integration:
-
-```python
-# Add to netmapper/api.py
-from flask import Flask, jsonify
-from .neo4j_manager import Neo4jManager
-
-@app.route('/api/network-topology')
-def get_topology():
-    neo4j = Neo4jManager(...)
-    return jsonify({
-        'hierarchy': neo4j.get_hierarchy_data(),
-        'topology': neo4j.get_topology_data()
-    })
+```bash
+cd frontend-graphui
+npm install
+npm run dev
+# Open http://localhost:5173
+# Press 5 for Data Center mode, double-click to drill down
 ```
 
-For complete setup instructions, see [frontend/QUICKSTART.md](frontend/QUICKSTART.md)
+**Features**:
+- 🎨 **Ultra-dense rendering**: Maximum information in minimal space
+- 🖥️ **"Google Earth for Data Centers"**: 4-level hierarchical drill-down
+- ⚡ **Direct Neo4j**: Bolt protocol connection, real-time Cypher queries
+- 📊 **Advanced layouts**: Force-directed, cluster-based, hierarchical
+- 🔍 **Spatial troubleshooting**: Visual pattern recognition
+
+See [frontend-graphui/README.md](frontend-graphui/README.md) for details.
+
+### Which One Should I Use?
+
+| Use Case | Recommended Frontend |
+|----------|---------------------|
+| Network operations (SSH, trace, config) | **React Dashboard** |
+| Familiar dashboard interface | **React Dashboard** |
+| Mobile/tablet access | **React Dashboard** |
+| Data center infrastructure management | **GraphUI** |
+| Deep dependency analysis | **GraphUI** |
+| Maximum information density | **GraphUI** |
+| Direct Neo4j queries | **GraphUI** |
+
+**You can run both simultaneously** - they can connect to the same Neo4j database!
 
 ## Supported Platforms
 

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dense Graph UI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(20, 20, 25, 0.9);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    #controls h3 {
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #controls label {
+      display: block;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+
+    #controls input[type="range"] {
+      width: 150px;
+      margin-left: 10px;
+    }
+
+    #controls button {
+      background: #2563eb;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin: 5px 5px 5px 0;
+    }
+
+    #controls button:hover {
+      background: #1d4ed8;
+    }
+
+    #info {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(20, 20, 25, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      color: #aaa;
+      z-index: 10;
+    }
+
+    #tooltip {
+      position: absolute;
+      background: rgba(10, 10, 15, 0.95);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 11px;
+      pointer-events: none;
+      display: none;
+      z-index: 100;
+      max-width: 300px;
+      backdrop-filter: blur(10px);
+    }
+
+    #tooltip .node-label {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    #tooltip .node-type {
+      display: inline-block;
+      padding: 2px 6px;
+      background: rgba(37, 99, 235, 0.3);
+      border-radius: 3px;
+      font-size: 10px;
+      margin-bottom: 8px;
+      color: #60a5fa;
+    }
+
+    #tooltip .property {
+      margin: 4px 0;
+      color: #ccc;
+    }
+
+    #tooltip .property-key {
+      color: #888;
+      margin-right: 6px;
+    }
+
+    #breadcrumb {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 25, 0.9);
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      font-size: 13px;
+      color: #aaa;
+      display: none;
+    }
+
+    #breadcrumb.visible {
+      display: block;
+    }
+
+    #breadcrumb .crumb {
+      display: inline;
+      color: #60a5fa;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    #breadcrumb .crumb:hover {
+      color: #93c5fd;
+    }
+
+    #breadcrumb .separator {
+      margin: 0 8px;
+      color: #555;
+    }
+
+    #breadcrumb .current {
+      color: #fff;
+      font-weight: bold;
+    }
+
+    #breadcrumb button {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      margin-left: 15px;
+    }
+
+    #breadcrumb button:hover {
+      background: #2563eb;
+    }
+
+    #neo4j-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(20, 20, 25, 0.9);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      min-width: 280px;
+    }
+
+    #neo4j-panel h3 {
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #neo4j-panel input[type="text"],
+    #neo4j-panel input[type="password"],
+    #neo4j-panel input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    #neo4j-panel label {
+      display: block;
+      margin: 10px 0 3px 0;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    #neo4j-panel button {
+      background: #10b981;
+      border: none;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin: 10px 5px 5px 0;
+      width: calc(50% - 5px);
+    }
+
+    #neo4j-panel button:hover {
+      background: #059669;
+    }
+
+    #neo4j-panel button.disconnect {
+      background: #ef4444;
+    }
+
+    #neo4j-panel button.disconnect:hover {
+      background: #dc2626;
+    }
+
+    #neo4j-panel .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      display: none;
+    }
+
+    #neo4j-panel .status.success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: block;
+    }
+
+    #neo4j-panel .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      display: block;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="graph-canvas"></canvas>
+
+    <div id="controls">
+      <h3>Graph Controls</h3>
+      <button id="randomize">Randomize Layout</button>
+      <button id="reset-view">Reset View</button>
+      <br>
+      <label>
+        Node Size: <input type="range" id="node-size" min="5" max="40" value="20">
+      </label>
+      <label>
+        Info Density: <input type="range" id="info-density" min="1" max="3" value="2">
+      </label>
+    </div>
+
+    <div id="info">
+      Nodes: <span id="node-count">0</span> |
+      Edges: <span id="edge-count">0</span> |
+      FPS: <span id="fps">0</span>
+    </div>
+
+    <div id="breadcrumb">
+      <span id="breadcrumb-path">All Data Centers</span>
+      <button id="breadcrumb-up">↑ Up</button>
+      <button id="breadcrumb-home">⌂ Home</button>
+    </div>
+
+    <div id="neo4j-panel">
+      <h3>Neo4j Connection</h3>
+
+      <div id="connection-form">
+        <label>URI</label>
+        <input type="text" id="neo4j-uri" value="bolt://localhost:7687" placeholder="bolt://localhost:7687">
+
+        <label>Username</label>
+        <input type="text" id="neo4j-username" value="neo4j" placeholder="neo4j">
+
+        <label>Password</label>
+        <input type="password" id="neo4j-password" value="" placeholder="password">
+
+        <button id="connect-btn">Connect</button>
+        <button id="disconnect-btn" class="disconnect hidden">Disconnect</button>
+
+        <div id="connection-status" class="status"></div>
+      </div>
+
+      <div id="load-controls" class="hidden">
+        <h3 style="margin-top: 20px;">Load Data</h3>
+
+        <label>Limit</label>
+        <input type="number" id="load-limit" value="100" min="10" max="1000">
+
+        <button id="load-all-btn">Load Graph</button>
+        <button id="load-custom-btn">Custom Query</button>
+      </div>
+    </div>
+
+    <div id="tooltip"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
